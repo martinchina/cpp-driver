@@ -53,6 +53,7 @@ option(CASS_INSTALL_HEADER "Install header file" ON)
 option(CASS_MULTICORE_COMPILATION "Enable multicore compilation" OFF)
 option(CASS_USE_STATIC_LIBS "Link static libraries when building executables" OFF)
 option(CASS_USE_EXTERNAL_BOOST "Use external verison of Boost" OFF)
+option(CASS_USE_LIBSSH2 "Use libssh2 (test harness)" ON)
 option(CASS_USE_OPENSSL "Use OpenSSL" ON)
 option(CASS_USE_TCMALLOC "Use tcmalloc" OFF)
 option(CASS_USE_ZLIB "Use zlib" OFF)
@@ -239,23 +240,37 @@ endif()
 # Test Dependencies
 #--------------------
 
-# libssh2
+# Boost and libssh2
 if(CASS_BUILD_TESTS)
-  # Setup the root directory for libssh2
-  set(LIBSSH2_ROOT "${PROJECT_SOURCE_DIR}/lib/libssh2/" $ENV{LIBSSH2_ROOT})
-  set(LIBSSH2_ROOT ${LIBSSH2_ROOT} ${LIBSSH2_ROOT_DIR} $ENV{LIBSSH2_ROOT_DIR})
+  # Ensure libssh2 is required
+  if(CASS_USE_LIBSSH2)
+    # Setup the root directory for libssh2
+    set(LIBSSH2_ROOT "${PROJECT_SOURCE_DIR}/lib/libssh2/" $ENV{LIBSSH2_ROOT})
+    set(LIBSSH2_ROOT ${LIBSSH2_ROOT} ${LIBSSH2_ROOT_DIR} $ENV{LIBSSH2_ROOT_DIR})
 
-  # Discover libssh2
-  find_package(LIBSSH2 REQUIRED)
+    # Discover libssh2
+    find_package(LIBSSH2)
+    if(NOT LIBSSH2_FOUND)
+      message(STATUS "### LIBSSH2 WAS NOT FOUND ###")
+      message(STATUS "Fix: Either use '-DCASS_USE_LIBSSH2=Off' or ensure LIBSSH2_ROOT or LIBSSH2_ROOT_DIR is defined.")
+    endif()
+  endif()
+  
+  # Assign libssh2 test library dependency
+  if(LIBSSH2_FOUND)
+    set(CASS_TEST_LIBS ${LIBSSH2_LIBRARIES})
+  else()
+    add_definitions("-DDISABLE_LIBSSH2")
+  endif()
 
   # Ensure unit and integration test boost components exist
   find_package(Boost ${CASS_MINIMUM_BOOST_VERSION} COMPONENTS chrono date_time filesystem log log_setup regex thread unit_test_framework)
-  if(NOT Boost_FOUND OR NOT LIBSSH2_FOUND)
-    message(FATAL_ERROR "Boost [chrono, date_time, filesystem, log, log_setup, system, regex, thread, and unit_test_framework] and libssh2 are required to build tests")
+  if(NOT Boost_FOUND)
+    message(FATAL_ERROR "Boost [chrono, date_time, filesystem, log, log_setup, system, regex, thread, and unit_test_framework]")
   endif()
 
-  # Assign test libraries (additional boost and libssh2 dependencies)
-  set(CASS_TEST_LIBS ${Boost_LIBRARIES} ${LIBSSH2_LIBRARIES})
+  # Assign boost test library dependency
+  set(CASS_TEST_LIBS ${CASS_TEST_LIBS} ${Boost_LIBRARIES})
   if(UNIX)
     set(CASS_TEST_LIBS ${CASS_TEST_LIBS} pthread)
   endif()

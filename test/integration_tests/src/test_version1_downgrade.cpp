@@ -49,9 +49,10 @@ BOOST_AUTO_TEST_CASE(query_after_downgrade)
   {
     test_utils::CassClusterPtr cluster(cass_cluster_new());
 
-    const cql::cql_ccm_bridge_configuration_t& conf = cql::get_ccm_bridge_configuration("config_v1.txt");
-
-    boost::shared_ptr<cql::cql_ccm_bridge_t> ccm = cql::cql_ccm_bridge_t::create_and_start(conf, "test", 3);
+    const cql::cql_ccm_bridge_configuration_t& conf = cql::get_ccm_bridge_configuration();
+    boost::shared_ptr<cql::cql_ccm_bridge_t> ccm(cql::cql_ccm_bridge_t::create(conf, "test", true));
+    ccm->populate(3);
+    ccm->start();
 
     test_utils::initialize_contact_points(cluster.get(), conf.ip_prefix(), 3, 0);
 

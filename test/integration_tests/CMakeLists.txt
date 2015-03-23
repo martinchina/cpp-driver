@@ -38,3 +38,11 @@ set_property(
 
 # Install the integration tests
 install(TARGETS ${PROJECT_INTEGRATION_TESTS_NAME} RUNTIME DESTINATION ${INSTALL_DLL_EXE_DIR})
+
+# Copy data file to output directory
+if(NOT EXISTS "${CMAKE_CURRENT_BINARY_DIR}/config.txt")
+  configure_file(${CCM_BRIDGE_CONFIGURATION_FILE} ${CMAKE_CURRENT_BINARY_DIR} COPYONLY)
+endif()
+if(NOT EXISTS "${CMAKE_BINARY_DIR}/config.txt")
+  configure_file(${CCM_BRIDGE_CONFIGURATION_FILE} ${CMAKE_BINARY_DIR} COPYONLY)
+endif()

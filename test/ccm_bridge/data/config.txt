@@ -1,24 +1,74 @@
+##
+# CCM Options
+##
 #
-# This is configuration file for CCMBridge library.
-# Options have same name as in .NET CCMBridge settings file, 
-# except USE_NOBUFFERING which now is replaced by USE_BUFFERNING option.
-# 
+# CCM Deployment Type (local|ssh)
+#
+# Flag to indicate how CCM commands should be run (locally or through SSH)
+#
+# NOTE: If CASS_USE_LIBSSH2=OFF; ssh deployment type is not valid
+#
+DEPLOYMENT_TYPE=local
+# Cassandra Deployment Version
+#
+# Cassandra version to deploy using CCM
+# (branches and tags can be used from https://github.com/apache/cassandra)
+#
+CASSANDRA_VERSION=2.1.3
+# Cassandra Deployment Version for v1 Downgrade
+#
+# Cassandra v1 downgrade to deploy using CCM
+# (branches and tags can be used from https://github.com/apache/cassandra)
+#
+CASSANDRA_VERSION_ONE_DOWNGRADE=1.2.19
+# Cassandra Node IP Prefix
+#
+# Cassandra node IP prefix to use when creating the IP of a CCM node during
+# the populate phase and for cpp-driver connection(s) (e.g. contacts)
+#
+IP_PREFIX=127.0.0.
 
-IP_PREFIX=192.168.13.
-CASSANDRA_VERSION=1.2.8
-
-# Addresses MUST be in IP form
-
-# Amazon 
-# SSH_HOST=54.224.125.58
-SSH_HOST=192.168.13.1
+##
+# SSH Options
+# Enusre DEPLOYMENT_TYPE=ssh to enable these options
+##
+# SSH Host (Hostname/IP Address)
+#
+# Host/IP to use when establishing ssh connection for remote CCM command
+# execution
+#
+SSH_HOST=127.0.0.1
+#
+# SSH Port (Port)
+#
+# TCP/IP port to use when establishing ssh connection for remote CCM command
+# execution
+#
 SSH_PORT=22
-SSH_USERNAME=user
-SSH_PASSWORD=password
+#
+# SSH Username (Username)
+#
+# Username for authenticating SSH connection
+#
+SSH_USERNAME=
+#
+# SSH Password (Password)
+#
+# Password for authenticating SSH connection
+#
+# NOTE: This password is plain text
+#
+SSH_PASSWORD=
 
+##
+# CPP-Driver Options
+##
 #
-# Use NO or YES for binary options
+# Binary Protocol Compression (NONE|LZ4|SNAPPY)
 #
-USE_COMPRESSION=NO
-USE_BUFFERING=YES
-USE_LOGGER=NO
+# Compression to use when working with the binary protocol and sending data to
+# a node
+#
+# NOTE: This feature is not currently implemented by the cpp-driver
+#
+COMPRESSION=NONE

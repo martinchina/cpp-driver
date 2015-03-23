@@ -19,10 +19,13 @@
 
 #include <exception>
 #include <deque>
+#include <sstream>
 #include <string.h>
 
 #include <boost/smart_ptr.hpp>
 #include <boost/noncopyable.hpp>
+
+#include <uv.h>
 
 #include "cql_ccm_bridge_configuration.hpp"
 #include "cql_escape_sequences_remover.hpp"
@@ -68,7 +71,7 @@ class cql_ccm_bridge_t : public boost::noncopyable {
   // Executes command on remote host
   // Returns command stdout and stderr followed by
   // shell prompth.
-  std::string execute_command(const std::string& command);
+  std::string execute_command(const std::string& command, const std::string& args);
 
   void update_config(const std::string& name, const std::string& value);
 
@@ -110,8 +113,8 @@ class cql_ccm_bridge_t : public boost::noncopyable {
 
   //TODO: Allow CCM create to keep instances if settings are the same
   static boost::shared_ptr<cql_ccm_bridge_t> create(const cql_ccm_bridge_configuration_t& settings,
-                                                    const std::string& name, bool is_ssl = false,
-                                                    bool is_client_authentication = false);
+                                                    const std::string& name, bool is_version_one = false,
+                                                    bool is_ssl = false, bool is_client_authentication = false);
 
   static boost::shared_ptr<cql_ccm_bridge_t> create_and_start(
       const cql_ccm_bridge_configuration_t& settings, const std::string& name,
@@ -121,8 +124,83 @@ class cql_ccm_bridge_t : public boost::noncopyable {
  private:
   /* CCM functionality */
   static const std::string CCM_COMMAND;
-  const std::string _ip_prefix;
-  const std::string _cassandra_version;
+  const std::string ip_prefix_;
+  const std::string cassandra_version_;
+  /**
+   * Flag to determine if local commands should be executed
+   */
+  bool is_local_;
+  /**
+   * Exit code/status for local execution
+   */
+  static int64_t local_exit_status_;
+  /**
+   * Standard out for local command execution
+   */
+  static std::stringstream local_command_stdout_;
+  /**
+   * Standard error for local command execution
+   */
+  static std::stringstream local_command_stderr_;
+
+  /**
+   * [libuv callback] Handle uv_spawn process ending/termination
+   *
+   * @param process Process executed
+   * @param exit_status Exit code/status
+   * @param term_signal Signal (if issued) for terminating process
+   */
+#if UV_VERSION_MAJOR == 0
+  static void execute_local_command_finish(uv_process_t *process, int exit_status, int term_signal);
+#else
+  static void execute_local_command_finish(uv_process_t *process, int64_t exit_status, int term_signal);
+#endif
+  /**
+   * [libuv callback] Allocate memory for stdin/stderr buffer
+   *
+   * @param handle Handle for process pipe
+   * @param length Length to allocate for buffer
+   * @param buffer Buffer to allocate memory for (if uv.major > 0)
+   * @return Allocated memory buffer (uv.major == 0)
+   */
+#if UV_VERSION_MAJOR == 0
+  static uv_buf_t allocate_command_output_buffer(uv_handle_t *handle, size_t length);
+#else
+  static void allocate_command_output_buffer(uv_handle_t *handle, size_t length, uv_buf_t *buffer);
+#endif
+  /**
+   * [libuv callback] Handle stdout output for local command execution
+   *
+   * @param stream Incoming stdout stream
+   * @param btyes_read Number of bytes read from the stream
+   * @param buffer Buffer containing the output from the execution
+   */
+#if UV_VERSION_MAJOR == 0
+  static void read_stdout(uv_stream_t *stream, ssize_t bytes_read, uv_buf_t buffer);
+#else
+  static void read_stdout(uv_stream_t *stream, ssize_t bytes_read, const uv_buf_t *buffer);
+#endif
+  /**
+   * [libuv callback] Handle stderr output for local command execution
+   *
+   * @param stream Incoming stderr stream
+   * @param btyes_read Number of bytes read from the stream
+   * @param buffer Buffer containing the output from the execution
+   */
+#if UV_VERSION_MAJOR == 0
+  static void read_stderr(uv_stream_t *stream, ssize_t bytes_read, uv_buf_t buffer);
+#else
+  static void read_stderr(uv_stream_t *stream, ssize_t bytes_read, const uv_buf_t *buffer);
+#endif
+  /**
+   * Execute a local command
+   *
+   * @param command Command to execute
+   * @param args Argument for the command; these arguments get parsed into an
+   *             array delimited by <space>
+   * @return stdin and stdout for the executing command
+   */
+  std::string execute_local_command(const std::string& command, const std::string& args) const;
 
   void execute_ccm_command(const std::string& ccm_args);
   void execute_ccm_and_print(const std::string& ccm_args);
@@ -143,6 +221,7 @@ class cql_ccm_bridge_t : public boost::noncopyable {
    */
   CassVersion get_cassandra_version(int node);
 
+#ifndef DISABLE_LIBSSH2
   /* SSH connection functionality */
 
   void initialize_environment();
@@ -163,25 +242,26 @@ class cql_ccm_bridge_t : public boost::noncopyable {
   void start_ssh_connection(const cql_ccm_bridge_configuration_t& settings);
   void close_ssh_session();
 
-  cql_escape_sequences_remover_t _esc_remover_stdout;
-  cql_escape_sequences_remover_t _esc_remover_stderr;
+  cql_escape_sequences_remover_t esc_remover_stdout_;
+  cql_escape_sequences_remover_t esc_remover_stderr_;
 
-  int _socket;
+  int socket_;
   struct ssh_internals;
-  boost::scoped_ptr<ssh_internals> _ssh_internals;
+  boost::scoped_ptr<ssh_internals> ssh_internals_;
+#endif
 };
 
 class cql_ccm_bridge_exception_t : public std::exception {
  public:
   cql_ccm_bridge_exception_t(const char* message)
-      : _message(message) {
+      : message_(message) {
   }
 
   virtual const char* what() const throw () {
-    return _message;
+    return message_;
   }
  private:
-  const char* const _message;
+  const char* const message_;
 };
 }
 
