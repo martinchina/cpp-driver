@@ -285,13 +285,9 @@ void cql_ccm_bridge_t::terminal_write(const string& command) {
 cql_ccm_bridge_t::cql_ccm_bridge_t(const cql_ccm_bridge_configuration_t& settings)
   : ip_prefix_(settings.ip_prefix())
   , cassandra_version_(settings.cassandara_version())
-  , is_local_(true){
+  , is_local_(true) {}
 
-}
-
-cql_ccm_bridge_t::~cql_ccm_bridge_t() {
-
-}
+cql_ccm_bridge_t::~cql_ccm_bridge_t() {}
 #endif
 
 void cql_ccm_bridge_t::execute_ccm_command(const string& ccm_args) {
@@ -388,8 +384,15 @@ std::string cql_ccm_bridge_t::execute_local_command(const std::string& command, 
   }
 
   // Create the option arguments from the tokens (very limiting for arguments)
+#ifdef _WIN32
+  char **options_args = new char*[5 + tokens.size()];
+  options_args[0] = "cmd.exe";
+  options_args[1] = "/C";
+  unsigned int n = 2;
+#else
   char **options_args = new char*[2 + tokens.size()];
   unsigned int n = 0;
+#endif
   options_args[n++] = const_cast<char *>(command.c_str());
   for (std::vector<std::string>::iterator token_iterator = tokens.begin() ; token_iterator != tokens.end(); ++token_iterator) {
     options_args[n++] = const_cast<char *>((*token_iterator).c_str());
@@ -416,7 +419,6 @@ std::string cql_ccm_bridge_t::execute_local_command(const std::string& command, 
   child_stdio[0].flags = UV_IGNORE;
   child_stdio[1].flags = (uv_stdio_flags) (UV_CREATE_PIPE | UV_READABLE_PIPE);
   child_stdio[1].data.stream = reinterpret_cast<uv_stream_t *>(&stdout_pipe);
-  child_stdio[2].flags = UV_IGNORE;
   child_stdio[2].flags = (uv_stdio_flags) (UV_CREATE_PIPE | UV_READABLE_PIPE);
   child_stdio[2].data.stream = reinterpret_cast<uv_stream_t *>(&stderr_pipe);
   options.stdio = child_stdio;
