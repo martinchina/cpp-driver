@@ -41,18 +41,19 @@ size_t cass_result_column_count(const CassResult* result) {
   return 0;
 }
 
-CassString cass_result_column_name(const CassResult* result, size_t index) {
-  CassString str;
+void cass_result_column_name(const CassResult* result,
+                             size_t index,
+                             const char** name,
+                             size_t* name_length) {
   if (result->kind() == CASS_RESULT_KIND_ROWS &&
       index < result->metadata()->column_count()) {
     const cass::ColumnDefinition def = result->metadata()->get(index);
-    str.data = def.name;
-    str.length = def.name_size;
+    *name = def.name;
+    *name_length = def.name_size;
   } else {
-    str.data = "";
-    str.length = 0;
+    *name = "";
+    *name_length = 0;
   }
-  return str;
 }
 
 CassValueType cass_result_column_type(const CassResult* result, size_t index) {

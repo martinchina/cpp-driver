@@ -107,19 +107,6 @@ typedef cass_uint8_t cass_byte_t;
 typedef cass_uint64_t cass_duration_t;
 
 /**
- * Byte buffer object.
- */
-typedef struct CassBytes_ {
-    const cass_byte_t* data; /* !< @public Data. */
-    size_t size;        /* !< @public Size. */
-} CassBytes;
-
-typedef struct CassString_ {
-    const char* data;
-    size_t length;
-} CassString;
-
-/**
  * The size of a IPv4 address
  */
 #define CASS_INET_V4_LENGTH 4
@@ -138,16 +125,6 @@ typedef struct CassInet_ {
   cass_uint8_t address[CASS_INET_V6_LENGTH];
   cass_uint8_t address_length;
 } CassInet;
-
-/**
- * @struct CassDecimal
- *
- * Arbitrary-precision integer.
- */
-typedef struct CassDecimal_ {
-  cass_int32_t scale;
-  CassBytes varint;
-} CassDecimal;
 
 /**
  * The size of a hexidecimal UUID string including a null terminator.
@@ -1239,8 +1216,10 @@ cass_schema_meta_get_field_n(const CassSchemaMeta* meta,
  * @param[in] field
  * @return The name of the metadata data field
  */
-CASS_EXPORT CassString
-cass_schema_meta_field_name(const CassSchemaMetaField* field);
+CASS_EXPORT void
+cass_schema_meta_field_name(const CassSchemaMetaField* field,
+                            const char** name,
+                            size_t* name_length);
 
 /**
  * Gets the value for a schema metadata field
@@ -1495,8 +1474,10 @@ cass_future_error_code(CassFuture* future);
  * @return Empty string returned if successful, otherwise a message describing the
  * error is returned.
  */
-CASS_EXPORT CassString
-cass_future_error_message(CassFuture* future);
+CASS_EXPORT void
+cass_future_error_message(CassFuture* future,
+                          const char** message,
+                          size_t* message_length);
 
 /***********************************************************************************
  *
@@ -1747,7 +1728,13 @@ cass_statement_bind_bool(CassStatement* statement,
 CASS_EXPORT CassError
 cass_statement_bind_string(CassStatement* statement,
                            size_t index,
-                           CassString value);
+                           const char* value);
+
+CASS_EXPORT CassError
+cass_statement_bind_string_n(CassStatement* statement,
+                             size_t index,
+                             const char* value,
+                             size_t value_length);
 
 /**
  * Binds a "blob" or "varint" to a query or bound statement at the specified index.
@@ -1762,8 +1749,9 @@ cass_statement_bind_string(CassStatement* statement,
  */
 CASS_EXPORT CassError
 cass_statement_bind_bytes(CassStatement* statement,
-                           size_t index,
-                           CassBytes value);
+                          size_t index,
+                          const cass_uint8_t* value,
+                          size_t value_size);
 
 /**
  * Binds a "uuid" or "timeuuid" to a query or bound statement at the specified index.
@@ -1809,7 +1797,9 @@ cass_statement_bind_inet(CassStatement* statement,
 CASS_EXPORT CassError
 cass_statement_bind_decimal(CassStatement* statement,
                             size_t index,
-                            CassDecimal value);
+                            const cass_byte_t* varint,
+                            size_t varint_size,
+                            cass_int32_t scale);
 
 /**
  * Binds any type to a query or bound statement at the specified index. A value
@@ -2011,7 +2001,7 @@ cass_statement_bind_bool_by_name_n(CassStatement* statement,
 CASS_EXPORT CassError
 cass_statement_bind_string_by_name(CassStatement* statement,
                                    const char* name,
-                                   CassString value);
+                                   const char* value);
 
 /**
   * @see cass_statement_bind_string_by_name()
@@ -2020,7 +2010,8 @@ CASS_EXPORT CassError
 cass_statement_bind_string_by_name_n(CassStatement* statement,
                                      const char* name,
                                      size_t name_length,
-                                     CassString value);
+                                     const char* value,
+                                     size_t value_length);
 
 /**
  * Binds a "blob" or "varint" to all the values with the
@@ -2040,7 +2031,8 @@ cass_statement_bind_string_by_name_n(CassStatement* statement,
 CASS_EXPORT CassError
 cass_statement_bind_bytes_by_name(CassStatement* statement,
                                   const char* name,
-                                  CassBytes value);
+                                  cass_uint8_t* value,
+                                  size_t value_size);
 
 /**
   * @see cass_statement_bind_bytes_by_name()
@@ -2049,7 +2041,8 @@ CASS_EXPORT CassError
 cass_statement_bind_bytes_by_name_n(CassStatement* statement,
                                     const char* name,
                                     size_t name_length,
-                                    CassBytes value);
+                                    cass_uint8_t* value,
+                                    size_t value_size);
 
 /**
  * Binds a "uuid" or "timeuuid" to all the values
@@ -2123,7 +2116,9 @@ cass_statement_bind_inet_by_name_n(CassStatement* statement,
 CASS_EXPORT CassError
 cass_statement_bind_decimal_by_name(CassStatement* statement,
                                     const char* name,
-                                    CassDecimal value);
+                                    const cass_byte_t* varint,
+                                    size_t varint_size,
+                                    cass_int32_t scale);
 
 /**
   * @see cass_statement_bind_decimal_by_name()
@@ -2132,7 +2127,9 @@ CASS_EXPORT CassError
 cass_statement_bind_decimal_by_name_n(CassStatement* statement,
                                       const char* name,
                                       size_t name_length,
-                                      CassDecimal value);
+                                      const cass_byte_t* varint,
+                                      size_t varint_size,
+                                      cass_int32_t scale);
 
 /**
  * Binds any type to all the values with the specified name. A value
@@ -2388,7 +2385,12 @@ cass_collection_append_bool(CassCollection* collection,
  */
 CASS_EXPORT CassError
 cass_collection_append_string(CassCollection* collection,
-                              CassString value);
+                              const char* value);
+
+CASS_EXPORT CassError
+cass_collection_append_string_n(CassCollection* collection,
+                                const char* value,
+                                size_t value_length);
 
 /**
  * Appends a "blob" or "varint" to the collection.
@@ -2402,7 +2404,8 @@ cass_collection_append_string(CassCollection* collection,
  */
 CASS_EXPORT CassError
 cass_collection_append_bytes(CassCollection* collection,
-                             CassBytes value);
+                             const cass_byte_t* value,
+                             size_t value_size);
 
 /**
  * Appends a "uuid" or "timeuuid"  to the collection.
@@ -2442,7 +2445,9 @@ cass_collection_append_inet(CassCollection* collection,
  */
 CASS_EXPORT CassError
 cass_collection_append_decimal(CassCollection* collection,
-                               CassDecimal value);
+                               const cass_byte_t* varint,
+                               size_t varint_size,
+                               cass_int32_t scale);
 
 /***********************************************************************************
  *
@@ -2495,9 +2500,11 @@ cass_result_column_count(const CassResult* result);
  * @return The column name at the specified index. Empty string
  * is returned if the index is out of bounds.
  */
-CASS_EXPORT CassString
+CASS_EXPORT void
 cass_result_column_name(const CassResult *result,
-                        size_t index);
+                        size_t index,
+                        const char** name,
+                        size_t* name_length);
 
 /**
  * Gets the column type at index for the specified result.
@@ -2951,11 +2958,13 @@ cass_value_get_inet(const CassValue* value,
  *
  * @param[in] value
  * @param[out] output
+ * @param[out] output_size
  * @return CASS_OK if successful, otherwise error occurred
  */
 CASS_EXPORT CassError
 cass_value_get_string(const CassValue* value,
-                      CassString* output);
+                      const char** output,
+                      size_t* output_size);
 
 /**
  * Gets the bytes of the specified value.
@@ -2964,11 +2973,15 @@ cass_value_get_string(const CassValue* value,
  *
  * @param[in] value
  * @param[out] output
+ * @param[out] output_size
  * @return CASS_OK if successful, otherwise error occurred
  */
 CASS_EXPORT CassError
 cass_value_get_bytes(const CassValue* value,
-                     CassBytes* output);
+                     const cass_byte_t** output,
+                     size_t* output_size);
+
+
 
 /**
  * Gets a decimal for the specified value.
@@ -2981,7 +2994,9 @@ cass_value_get_bytes(const CassValue* value,
  */
 CASS_EXPORT CassError
 cass_value_get_decimal(const CassValue* value,
-                       CassDecimal* output);
+                       const cass_byte_t** varint,
+                       size_t* varint_size,
+                       cass_int32_t* scale);
 
 /**
  * Gets the type of the specified value.
@@ -3336,77 +3351,6 @@ cass_inet_init_v4(const cass_uint8_t* address);
  */
 CASS_EXPORT CassInet
 cass_inet_init_v6(const cass_uint8_t* address);
-
-/***********************************************************************************
- *
- * Decimal
- *
- ************************************************************************************/
-
-/**
- * Constructs a decimal object.
- *
- * Note: This does not allocate memory. The object wraps the pointer
- * passed into this function.
- *
- * @public @memberof CassDecimal
- *
- * @param[in] scale
- * @param[in] varint
- * @return A decimal object.
- */
-CASS_EXPORT CassDecimal
-cass_decimal_init(cass_int32_t scale, CassBytes varint);
-
-/***********************************************************************************
- *
- * Bytes/String
- *
- ************************************************************************************/
-
-/**
- * Constructs a bytes object.
- *
- * Note: This does not allocate memory. The object wraps the pointer
- * passed into this function.
- *
- * @public @memberof CassBytes
- *
- * @param[in] data
- * @param[in] size
- * @return A bytes object.
- */
-CASS_EXPORT CassBytes
-cass_bytes_init(const cass_byte_t* data, size_t size);
-
-/**
- * Constructs a string object from a null-terminated string.
- *
- * Note: This does not allocate memory. The object wraps the pointer
- * passed into this function.
- *
- * @public @memberof CassString
- *
- * @param[in] null_terminated
- * @return A string object.
- */
-CASS_EXPORT CassString
-cass_string_init(const char* null_terminated);
-
-/**
- * Constructs a string object.
- *
- * Note: This does not allocate memory. The object wraps the pointer
- * passed into this function.
- *
- * @public @memberof CassString
- *
- * @param[in] data
- * @param[in] data_length
- * @return A string object.
- */
-CASS_EXPORT CassString
-cass_string_init_n(const char* data, size_t data_length);
 
 #ifdef __cplusplus
 } /* extern "C" */
