@@ -82,6 +82,13 @@ private:
              const char* format, va_list args);
     bool is_flushed() const { return log_queue_.is_empty(); }
 
+    // Called in child process to prevent joining a non-running thread
+    // TODO: Maybe we could just flush the log_queue and not assert the
+    // join?
+    void uninintalize() {
+      is_initialized_ = false;
+    }
+
   private:
     void close_handles();
 
@@ -95,6 +102,8 @@ private:
     bool has_been_warned_;
     bool is_initialized_;
   };
+
+  static void child_process();
 
 private:
   static void internal_init();

@@ -147,7 +147,16 @@ void Logger::cleanup() {
   thread_.reset();
 }
 
+void Logger::child_process() {
+  thread_->uninintalize();
+  thread_.reset();
+  uv_once_t temp = UV_ONCE_INIT;
+  logger_init_guard = temp;
+}
+
 void Logger::internal_init() {
+  // TODO: Windows implementation
+  pthread_atfork(NULL, NULL, Logger::child_process);
   thread_.reset(new LogThread(queue_size_));
 }
 
