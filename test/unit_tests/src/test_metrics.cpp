@@ -20,8 +20,10 @@
 
 #include "metrics.hpp"
 
+#include <boost/chrono.hpp>
 #include <boost/test/unit_test.hpp>
 #include <boost/test/floating_point_comparison.hpp>
+#include <boost/thread/thread.hpp>
 
 #include <uv.h>
 
@@ -61,10 +63,9 @@ struct MeterThreadArgs {
 void meter_thread(void* data) {
   MeterThreadArgs* args = static_cast<MeterThreadArgs*>(data);
 
-  // ~1000 requests a second (Needs to run for at least 5 seconds)
-  for (int i = 0; i < 5002; ++i) {
-    uint64_t start = uv_hrtime();
-    while (uv_hrtime() - start < 1000000) {} // 1 ms
+  // ~10 requests a second (Needs to run for at least 5 seconds)
+  for (int i = 0; i < 51; ++i) {
+    boost::this_thread::sleep_for(boost::chrono::milliseconds(100));
     args->meter->mark();
   }
 }
@@ -168,17 +169,17 @@ BOOST_AUTO_TEST_CASE(meter)
   cass::Metrics::ThreadState thread_state(1);
   cass::Metrics::Meter meter(&thread_state);
 
-  // ~1000 requests a second (Needs to run for at least 5 seconds)
-  for (int i = 0; i < 5100; ++i) {
-    uint64_t start = uv_hrtime();
-    while (uv_hrtime() - start < 1000000) {} // 1 ms
+  // ~10 requests a second (Needs to run for at least 5 seconds)
+  for (int i = 0; i < 51; ++i) {
+    boost::this_thread::sleep_for(boost::chrono::milliseconds(100));
     meter.mark();
   }
 
-  BOOST_CHECK_CLOSE(meter.mean_rate(), 1000, 0.3);
-  BOOST_CHECK_CLOSE(meter.one_minute_rate(), 1000, 0.3);
-  BOOST_CHECK_CLOSE(meter.five_minute_rate(), 1000, 0.3);
-  BOOST_CHECK_CLOSE(meter.fifteen_minute_rate(), 1000, 0.3);
+  // Sleep can be off by as much as 10 ms on most systems (or 10% for 100ms)
+  BOOST_CHECK_CLOSE(meter.mean_rate(), 10, 10.0);
+  BOOST_CHECK_CLOSE(meter.one_minute_rate(), 10, 10.0);
+  BOOST_CHECK_CLOSE(meter.five_minute_rate(), 10, 10.0);
+  BOOST_CHECK_CLOSE(meter.fifteen_minute_rate(), 10, 10.0);
 }
 
 BOOST_AUTO_TEST_CASE(meter_threads)
@@ -197,10 +198,11 @@ BOOST_AUTO_TEST_CASE(meter_threads)
     uv_thread_join(&args[i].thread);
   }
 
-  BOOST_CHECK_CLOSE(meter.mean_rate(), 1000 * NUM_THREADS, 1.0);
-  BOOST_CHECK_CLOSE(meter.one_minute_rate(), 1000 * NUM_THREADS, 1.0);
-  BOOST_CHECK_CLOSE(meter.five_minute_rate(), 1000 * NUM_THREADS, 1.0);
-  BOOST_CHECK_CLOSE(meter.fifteen_minute_rate(), 1000 * NUM_THREADS, 1.0);
+  // Sleep can be off by as much as 10 ms on most systems (or 10% for 100ms)
+  BOOST_CHECK_CLOSE(meter.mean_rate(), 10 * NUM_THREADS, 10.0);
+  BOOST_CHECK_CLOSE(meter.one_minute_rate(), 10 * NUM_THREADS, 10.0);
+  BOOST_CHECK_CLOSE(meter.five_minute_rate(), 10 * NUM_THREADS, 10.0);
+  BOOST_CHECK_CLOSE(meter.fifteen_minute_rate(), 10 * NUM_THREADS, 10.0);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

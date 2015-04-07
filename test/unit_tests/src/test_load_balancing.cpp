@@ -28,10 +28,12 @@
 #include "token_map.hpp"
 #include "replication_strategy.hpp"
 
+#include <boost/chrono.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/scoped_ptr.hpp>
 #include <boost/test/unit_test.hpp>
 #include <boost/test/floating_point_comparison.hpp>
+#include <boost/thread/thread.hpp>
 
 #include <limits>
 #include <string>
@@ -134,16 +136,19 @@ uint64_t calculate_moving_average(uint64_t first_latency_ns,
   }
 
   host.update_latency(first_latency_ns);
+
+  // Spin wait
   uint64_t start = uv_hrtime();
   while (uv_hrtime() - start < time_between_ns) {}
+
   host.update_latency(second_latency_ns);
   cass::TimestampedAverage current = host.get_current_average();
   return current.average;
 }
 
-bool is_average_within(uint64_t expected, uint64_t actual, double tolerance) {
+void check_within(uint64_t expected, uint64_t actual, double tolerance) {
   uint64_t delta = static_cast<uint64_t>(tolerance * expected);
-  return expected + delta >= actual && expected - delta <= actual;
+  BOOST_CHECK(expected + delta >= actual && expected - delta <= actual);
 }
 
 BOOST_AUTO_TEST_SUITE(round_robin_lb)
@@ -689,25 +694,17 @@ BOOST_AUTO_TEST_CASE(moving_average)
   const uint64_t one_ms = 1000000LL; // 1 ms in ns
 
   // Verify average is approx. the same when recording the same latency twice
-  BOOST_CHECK(is_average_within(calculate_moving_average(one_ms, one_ms, 100LL),
-                                one_ms,
-                                0.000002));
+  check_within(calculate_moving_average(one_ms, one_ms, 100LL), one_ms, 0.000002);
 
-  BOOST_CHECK(is_average_within(calculate_moving_average(one_ms, one_ms, 1000LL),
-                                one_ms,
-                                0.000002));
+  check_within(calculate_moving_average(one_ms, one_ms, 1000LL), one_ms, 0.000002);
 
   // First average is 100 us and second average is 50 us, expect a 75 us average approx.
   // after a short wait time. This has a high tolerance because the time waited varies.
-  BOOST_CHECK(is_average_within(calculate_moving_average(one_ms, one_ms / 2LL, 50LL),
-                                (3LL * one_ms) / 4LL,
-                                0.05));
+  check_within(calculate_moving_average(one_ms, one_ms / 2LL, 50LL), (3LL * one_ms) / 4LL, 0.1);
 
   // First average is 100 us and second average is 50 us, expect a 50 us average approx.
   // after a longer wait time. This has a high tolerance because the time waited varies
-  BOOST_CHECK(is_average_within(calculate_moving_average(one_ms, one_ms / 2LL, 100000LL),
-                                one_ms / 2LL,
-                                0.02));
+  check_within(calculate_moving_average(one_ms, one_ms / 2LL, 100000LL), one_ms / 2LL, 0.1);
 }
 
 BOOST_AUTO_TEST_CASE(simple)
@@ -720,8 +717,8 @@ BOOST_AUTO_TEST_CASE(simple)
   // Latencies can't excceed 2x the minimum latency
   settings.exclusion_threshold = 2.0;
 
-  // Set the retry period to 2 seconds
-  settings.retry_period_ns = 2LL * 1000LL * 1000LL * 1000L;
+  // Set the retry period to 1 second
+  settings.retry_period_ns = 1000LL * 1000LL * 1000L;
 
   const int64_t num_hosts = 4;
   cass::HostMap hosts;
@@ -750,7 +747,7 @@ BOOST_AUTO_TEST_CASE(simple)
   task.run();
 
   // Wait for task to run (minimum average calculation will happen after 100 ms)
-  sleep(1);
+  boost::this_thread::sleep_for(boost::chrono::milliseconds(150));
 
   task.done();
   task.join();
@@ -766,7 +763,7 @@ BOOST_AUTO_TEST_CASE(simple)
   }
 
   // Excceed retry period
-  sleep(1);
+  boost::this_thread::sleep_for(boost::chrono::seconds(1));
 
   // After waiting no hosts should be skipped (notice 2 and 3 tried first)
   {
@@ -801,7 +798,7 @@ BOOST_AUTO_TEST_CASE(min_average_under_min_measured)
   task.run();
 
   // Wait for task to run (minimum average calculation will happen after 100 ms)
-  sleep(1);
+  boost::this_thread::sleep_for(boost::chrono::milliseconds(150));
 
   task.done();
   task.join();
