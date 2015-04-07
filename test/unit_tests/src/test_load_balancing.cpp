@@ -701,7 +701,7 @@ BOOST_AUTO_TEST_CASE(moving_average)
   // after a short wait time. This has a high tolerance because the time waited varies.
   BOOST_CHECK_CLOSE(static_cast<double>(calculate_moving_average(one_ms, one_ms / 2LL, 50LL)),
                     static_cast<double>((3LL * one_ms) / 4LL),
-                    2.0);
+                    20.0); // Highly variable because it's in the early part of the logarithmic curve
 
   // First average is 100 us and second average is 50 us, expect a 50 us average approx.
   // after a longer wait time. This has a high tolerance because the time waited varies
