@@ -146,11 +146,6 @@ uint64_t calculate_moving_average(uint64_t first_latency_ns,
   return current.average;
 }
 
-void check_within(uint64_t expected, uint64_t actual, double tolerance) {
-  uint64_t delta = static_cast<uint64_t>(tolerance * expected);
-  BOOST_CHECK(expected + delta >= actual && expected - delta <= actual);
-}
-
 BOOST_AUTO_TEST_SUITE(round_robin_lb)
 
 BOOST_AUTO_TEST_CASE(simple) {
@@ -686,7 +681,7 @@ BOOST_AUTO_TEST_CASE(threshold_to_account)
   host.update_latency(one_ms);
   current = host.get_current_average();
   BOOST_CHECK(current.num_measured == threshold_to_account + 1);
-  BOOST_CHECK(current.average == one_ms);
+  BOOST_CHECK(current.average == static_cast<int64_t>(one_ms));
 }
 
 BOOST_AUTO_TEST_CASE(moving_average)
@@ -694,17 +689,25 @@ BOOST_AUTO_TEST_CASE(moving_average)
   const uint64_t one_ms = 1000000LL; // 1 ms in ns
 
   // Verify average is approx. the same when recording the same latency twice
-  check_within(calculate_moving_average(one_ms, one_ms, 100LL), one_ms, 0.000002);
+  BOOST_CHECK_CLOSE(static_cast<double>(calculate_moving_average(one_ms, one_ms, 100LL)),
+                    static_cast<double>(one_ms),
+                    0.00002);
 
-  check_within(calculate_moving_average(one_ms, one_ms, 1000LL), one_ms, 0.000002);
+  BOOST_CHECK_CLOSE(static_cast<double>(calculate_moving_average(one_ms, one_ms, 1000LL)),
+                    static_cast<double>(one_ms),
+                    0.00002);
 
   // First average is 100 us and second average is 50 us, expect a 75 us average approx.
   // after a short wait time. This has a high tolerance because the time waited varies.
-  check_within(calculate_moving_average(one_ms, one_ms / 2LL, 50LL), (3LL * one_ms) / 4LL, 0.1);
+  BOOST_CHECK_CLOSE(static_cast<double>(calculate_moving_average(one_ms, one_ms / 2LL, 50LL)),
+                    static_cast<double>((3LL * one_ms) / 4LL),
+                    2.0);
 
   // First average is 100 us and second average is 50 us, expect a 50 us average approx.
   // after a longer wait time. This has a high tolerance because the time waited varies
-  check_within(calculate_moving_average(one_ms, one_ms / 2LL, 100000LL), one_ms / 2LL, 0.1);
+  BOOST_CHECK_CLOSE(static_cast<double>(calculate_moving_average(one_ms, one_ms / 2LL, 100000LL)),
+                    static_cast<double>(one_ms / 2LL),
+                    2.0);
 }
 
 BOOST_AUTO_TEST_CASE(simple)
