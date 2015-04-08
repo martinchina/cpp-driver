@@ -175,11 +175,11 @@ BOOST_AUTO_TEST_CASE(meter)
     meter.mark();
   }
 
-  // Sleep can be off by as much as 10 ms on most systems (or 10% for 100ms)
-  BOOST_CHECK_CLOSE(meter.mean_rate(), 10, 10.0);
-  BOOST_CHECK_CLOSE(meter.one_minute_rate(), 10, 10.0);
-  BOOST_CHECK_CLOSE(meter.five_minute_rate(), 10, 10.0);
-  BOOST_CHECK_CLOSE(meter.fifteen_minute_rate(), 10, 10.0);
+  // Sleep can be off by as much as 10+ ms on most systems (or >10% for 100ms)
+  BOOST_CHECK_CLOSE(meter.mean_rate(), 10, 15.0);
+  BOOST_CHECK_CLOSE(meter.one_minute_rate(), 10, 15.0);
+  BOOST_CHECK_CLOSE(meter.five_minute_rate(), 10, 15.0);
+  BOOST_CHECK_CLOSE(meter.fifteen_minute_rate(), 10, 15.0);
 }
 
 BOOST_AUTO_TEST_CASE(meter_threads)
@@ -198,11 +198,11 @@ BOOST_AUTO_TEST_CASE(meter_threads)
     uv_thread_join(&args[i].thread);
   }
 
-  // Sleep can be off by as much as 10 ms on most systems (or 10% for 100ms)
-  BOOST_CHECK_CLOSE(meter.mean_rate(), 10 * NUM_THREADS, 10.0);
-  BOOST_CHECK_CLOSE(meter.one_minute_rate(), 10 * NUM_THREADS, 10.0);
-  BOOST_CHECK_CLOSE(meter.five_minute_rate(), 10 * NUM_THREADS, 10.0);
-  BOOST_CHECK_CLOSE(meter.fifteen_minute_rate(), 10 * NUM_THREADS, 10.0);
+  // Sleep can be off by as much as 10+ ms on most systems (or 10% for 100ms)
+  BOOST_CHECK_CLOSE(meter.mean_rate(), 10 * NUM_THREADS, 15.0);
+  BOOST_CHECK_CLOSE(meter.one_minute_rate(), 10 * NUM_THREADS, 15.0);
+  BOOST_CHECK_CLOSE(meter.five_minute_rate(), 10 * NUM_THREADS, 15.0);
+  BOOST_CHECK_CLOSE(meter.fifteen_minute_rate(), 10 * NUM_THREADS, 15.0);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

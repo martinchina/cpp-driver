@@ -691,17 +691,17 @@ BOOST_AUTO_TEST_CASE(moving_average)
   // Verify average is approx. the same when recording the same latency twice
   BOOST_CHECK_CLOSE(static_cast<double>(calculate_moving_average(one_ms, one_ms, 100LL)),
                     static_cast<double>(one_ms),
-                    0.00002);
+                    0.2);
 
   BOOST_CHECK_CLOSE(static_cast<double>(calculate_moving_average(one_ms, one_ms, 1000LL)),
                     static_cast<double>(one_ms),
-                    0.00002);
+                    0.2);
 
   // First average is 100 us and second average is 50 us, expect a 75 us average approx.
   // after a short wait time. This has a high tolerance because the time waited varies.
   BOOST_CHECK_CLOSE(static_cast<double>(calculate_moving_average(one_ms, one_ms / 2LL, 50LL)),
                     static_cast<double>((3LL * one_ms) / 4LL),
-                    20.0); // Highly variable because it's in the early part of the logarithmic curve
+                    50.0); // Highly variable because it's in the early part of the logarithmic curve
 
   // First average is 100 us and second average is 50 us, expect a 50 us average approx.
   // after a longer wait time. This has a high tolerance because the time waited varies
